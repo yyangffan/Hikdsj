@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">HikSdkDemo</string>
+    <string name="media">多媒体</string>
+    <string name="parameter">参数配置</string>
+    <string name="tts">语音播报</string>
+    <string name="start_tts">开始播报</string>
+    <string name="stop_tts">停止播报</string>
+    <string name="tts_speak">本公司致力于为创业团队提供技术支持、市场拓展、产业链资源、资本对接等全方位优质服务</string>
+</resources>
