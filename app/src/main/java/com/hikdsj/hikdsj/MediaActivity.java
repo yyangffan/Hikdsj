@@ -191,7 +191,7 @@ public class MediaActivity extends AppCompatActivity implements SurfaceHolder.Ca
                     //startRecordAddNotify startRecord区别在于是否有想要有通知栏提示
                     //stopRecordDelNotify  stopRecord 配合前者一起使用
 //                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, "/storage/sdcard0/hello.mp4");
-                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, null);
+                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, "/storage/sdcard0/carvideo.mp4");
 //                    mediaClient.startRecord(cameraIndex, HikSdk.STREAM_TYPE_MAIN, "/sdcard/hello.mp4");
 //                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, null);
                 } else {

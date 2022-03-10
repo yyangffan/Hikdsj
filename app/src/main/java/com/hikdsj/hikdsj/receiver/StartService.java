@@ -10,29 +10,56 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.os.Build;
+import android.os.Environment;
+import android.os.Handler;
 import android.os.IBinder;
+import android.text.TextUtils;
+import android.util.Log;
+import android.widget.Toast;
 
+import com.hikdsj.hikdsj.HikuseUtils;
 import com.hikdsj.hikdsj.MainActivity;
 import com.hikdsj.hikdsj.MediaActivity;
 import com.hikdsj.hikdsj.R;
+import com.hikdsj.hikdsj.base.CarApplication;
+import com.hikdsj.hikdsj.base.Constant;
+import com.ljy.devring.util.FileUtil;
+
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class StartService extends Service {
+    private static final String TAG = "StartService";
+    private final HikuseUtils mInstance;
+    private StringBuilder str_caozuo = new StringBuilder();
+
     public StartService() {
+        mInstance = HikuseUtils.getInstance(CarApplication.getInstance());
+        mInstance.setOnRecordListener(new HikuseUtils.OnRecordListener() {
+            @Override
+            public void onstartRecord() {
+            }
+
+            @Override
+            public void onstopRecord() {
+                goUpVideo();
+            }
+        });
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
         throw new UnsupportedOperationException("Not yet implemented");
     }
-
-/*    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        Intent int_media = new Intent(this, MediaActivity.class);
-        int_media.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(int_media);
-        return super.onStartCommand(intent, flags, startId);
-    }*/
 
     @TargetApi(26)
     private void setForeground() {
@@ -49,8 +76,8 @@ public class StartService extends Service {
                 .setWhen(System.currentTimeMillis()) // 设置该通知发生的时间
                 .build();
         startForeground(0x111, notification);
-//        toConnectSocket();
-        start(this);
+        toConnectSocket();
+//        start(this);
 
     }
 
@@ -74,23 +101,167 @@ public class StartService extends Service {
                     .setWhen(System.currentTimeMillis()); // 设置该通知发生的时间
             Notification notification = builder.build(); // 获取构建好的Notification
             startForeground(0x111, notification);// 开始前台服务
-//            toConnectSocket();
-            start(this);
+            toConnectSocket();
+//            start(this);
+        }
+    }
+
+    private void goUpVideo(){
+        Log.i(TAG, "goUpVideo: 录制结束，上传视频");
+        str_caozuo.append("\n:录制结束，上传视频"+"/storage/sdcard0/carvideo.mp4");
+        toSaveLog(str_caozuo.toString(),"结束：");
+    }
+
+    private void toSaveLog(String result, String msg) {
+        String out_str = msg + ": " + result;
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        try {
+            String time = simpleDateFormat.format(new Date());
+            String fileName = time + ".txt";
+            if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+                File dirTemp = FileUtil.getDirectory(FileUtil.getExternalCacheDir(this), "carcontrol_log");
+                File fileOutput = FileUtil.getFile(dirTemp, fileName);
+
+                if (fileOutput == null) {
+                    Log.e(TAG, "toSaveLog: 文件创建失败");
+                    return;
+                }
+                FileOutputStream fos = new FileOutputStream(fileOutput);
+                fos.write(out_str.getBytes());
+                fos.close();
+                Log.e(TAG, "toSaveLog: 文件已保存");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "toSaveLog: 文件创建失败" + e.toString());
+        }
+        str_caozuo = new StringBuilder();
+    }
+
+    /*--------------------------------------Socket一系列--------------------------------------*/
+    private String mContect_ip = "";                        //设备间的唯一标识
+    private WebSocketClient mWebSocketClient;
+    private static final long HEART_BEAT_RATE = 30 * 1000;  //心跳间隔
+    private long sendTime = 0L;                             //心跳时间暂存
+    private String mSocket_url = "";
+
+    private void toConnectSocket() {
+        mContect_ip = "10";
+        initSocket();
+
+    }
+
+    public void initSocket() {
+        if (null == mWebSocketClient) {
+            mSocket_url = Constant.BASE_URL + "webSocket/" + mContect_ip;
+            Log.e(TAG, "initSocket: " + mSocket_url);
+            try {
+                mWebSocketClient = new WebSocketClient(new URI(mSocket_url)) {
+                    @Override
+                    public void onOpen(ServerHandshake handshakedata) {
+                        Log.i(TAG, "State_Socket：连接成功");
+                    }
+
+                    @Override
+                    public void onMessage(String message) {
+                        str_caozuo.append("onMessage:"+message);
+                        try {
+                            JSONObject jsonObject =new JSONObject(message);
+                            String type = jsonObject.getString("type");
+                            if(type.equals("1")){
+                                mInstance.stspRecod(true);
+                                str_caozuo.append("\n:开始录制");
+                            }else if(type.equals("2")){
+                                str_caozuo.append("\n:结束录制");
+                                mInstance.stspRecod(false);
+                            }
+                        } catch (JSONException e) {
+                            str_caozuo.append("\n:解析异常"+e.toString());
+                        }
+
+                    }
+
+                    @Override
+                    public void onClose(int code, String reason, boolean remote) {
+                        Log.e(TAG, "State_Socket：已关闭- code:" + code + " reason:" + reason);
+                    }
+
+                    @Override
+                    public void onError(Exception ex) {
+                        Log.e(TAG, "State_Socket：连接错误-" + ex.toString());
+                    }
+                };
+                mWebSocketClient.connectBlocking();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                toStartHeart();
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+                toStartHeart();
+            }
+            toStartHeart();
         }
     }
 
 
-
-
-    private void start(Context context) {
-        Intent int_media = new Intent(context, MediaActivity.class);
-        int_media.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//        PendingIntent.getActivity(context, 0, int_media, 0);
-        startActivity(int_media);
+    private void toStartHeart() {
+        Log.i(TAG, "initSocket: 启动心跳");
+        mHandler_socket.postDelayed(heartBeatRunnable, HEART_BEAT_RATE);//开启心跳检测
     }
 
+    private Handler mHandler_socket = new Handler();
+    Runnable heartBeatRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (System.currentTimeMillis() - sendTime >= HEART_BEAT_RATE) {
+                if (mWebSocketClient != null) {//长连接已断开
+                    if (mWebSocketClient.isClosed()) {
+                        reconnectWs();
+                    }
+                    Log.e(TAG, "run: 发送心跳");
+                } else {//长连接处于连接状态
+                    initSocket();
+                }
+                sendTime = System.currentTimeMillis();
 
+            }
+            mHandler_socket.postDelayed(heartBeatRunnable, HEART_BEAT_RATE);
+        }
+    };
 
+    /**
+     * 开启重连
+     */
+    private void reconnectWs() {
+        new Thread() {
+            @Override
+            public void run() {
+                try {
+                    mWebSocketClient.reconnectBlocking();
+                    Log.e(TAG, "State_Socket：重新连接中..."+mSocket_url);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+    }
 
+    public void stopConnect() {
+        if (mWebSocketClient != null) {
+            try {
+                mWebSocketClient.close();
+                mWebSocketClient = null;
+                Log.e(TAG, "stopConnect: 链接已断开 "+mSocket_url);
+            } catch (Exception e) {
+                Log.e(TAG, "run: " + e.toString());
+            }
+        }
+        mHandler_socket.removeCallbacks(heartBeatRunnable);
+    }
+    /*sendBroadcast(new Intent(this,MyLiveReceiver.class));*/
+  /*  private void start(Context context) {
+        Intent int_media = new Intent(context, MediaActivity.class);
+        int_media.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(int_media);
+    }*/
 
 }
