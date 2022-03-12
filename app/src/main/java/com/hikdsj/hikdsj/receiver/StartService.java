@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -23,6 +24,8 @@ import com.hikdsj.hikdsj.MediaActivity;
 import com.hikdsj.hikdsj.R;
 import com.hikdsj.hikdsj.base.CarApplication;
 import com.hikdsj.hikdsj.base.Constant;
+import com.instacart.library.truetime.TrueTime;
+import com.instacart.library.truetime.TrueTimeRx;
 import com.ljy.devring.util.FileUtil;
 
 import org.java_websocket.client.WebSocketClient;
@@ -34,26 +37,20 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 public class StartService extends Service {
     private static final String TAG = "StartService";
-    private final HikuseUtils mInstance;
+    private HikuseUtils mInstance;
     private StringBuilder str_caozuo = new StringBuilder();
 
     public StartService() {
-        mInstance = HikuseUtils.getInstance(CarApplication.getInstance());
-        mInstance.setOnRecordListener(new HikuseUtils.OnRecordListener() {
-            @Override
-            public void onstartRecord() {
-            }
-
-            @Override
-            public void onstopRecord() {
-                goUpVideo();
-            }
-        });
+      initHik();
+//        refreshTrueTime();
     }
 
     @Override
@@ -106,10 +103,10 @@ public class StartService extends Service {
         }
     }
 
-    private void goUpVideo(){
+    private void goUpVideo() {
         Log.i(TAG, "goUpVideo: 录制结束，上传视频");
-        str_caozuo.append("\n:录制结束，上传视频"+"/storage/sdcard0/carvideo.mp4");
-        toSaveLog(str_caozuo.toString(),"结束：");
+        str_caozuo.append("\n:录制结束，上传视频" + "/storage/sdcard0/carvideo.mp4");
+        toSaveLog(str_caozuo.toString(), "结束：");
     }
 
     private void toSaveLog(String result, String msg) {
@@ -136,7 +133,40 @@ public class StartService extends Service {
         }
         str_caozuo = new StringBuilder();
     }
+    /*海康SDK工具类初始化*/
+    private void initHik() {
+        mInstance = HikuseUtils.getInstance(CarApplication.getInstance());
+        mInstance.setOnRecordListener(new HikuseUtils.OnRecordListener() {
+            @Override
+            public void onstartRecord() {
+            }
 
+            @Override
+            public void onstopRecord() {
+                goUpVideo();
+            }
+        });
+    }
+
+    /*--------------------------------------时间校准--------------------------------------*/
+    private void refreshTrueTime() {
+        if (!TrueTimeRx.isInitialized()) {
+            Log.e(TAG, "refreshTrueTime: Sorry TrueTime not yet initialized.");
+            return;
+        }
+        Date trueTime = TrueTimeRx.now();
+        Date deviceTime = new Date();
+
+        Log.d(TAG, String.format(" [trueTime: %d] [devicetime: %d] [drift_sec: %f]", trueTime.getTime(), deviceTime.getTime(), (trueTime.getTime() - deviceTime.getTime()) / 1000F));
+        Log.e(TAG, "_formatDate: "+ _formatDate(trueTime, "yyyy-MM-dd HH:mm:ss"));
+        Log.e(TAG, "refreshTrueTime: " );
+//        SystemClock.setCurrentTimeMillis(trueTime.getTime());
+    }
+
+    private String _formatDate(Date date, String pattern) {
+        DateFormat format = new SimpleDateFormat(pattern);
+        return format.format(date);
+    }
     /*--------------------------------------Socket一系列--------------------------------------*/
     private String mContect_ip = "";                        //设备间的唯一标识
     private WebSocketClient mWebSocketClient;
@@ -163,19 +193,19 @@ public class StartService extends Service {
 
                     @Override
                     public void onMessage(String message) {
-                        str_caozuo.append("onMessage:"+message);
+                        str_caozuo.append("onMessage:" + message);
                         try {
-                            JSONObject jsonObject =new JSONObject(message);
+                            JSONObject jsonObject = new JSONObject(message);
                             String type = jsonObject.getString("type");
-                            if(type.equals("1")){
+                            if (type.equals("1")) {
                                 mInstance.stspRecod(true);
                                 str_caozuo.append("\n:开始录制");
-                            }else if(type.equals("2")){
+                            } else if (type.equals("2")) {
                                 str_caozuo.append("\n:结束录制");
                                 mInstance.stspRecod(false);
                             }
                         } catch (JSONException e) {
-                            str_caozuo.append("\n:解析异常"+e.toString());
+                            str_caozuo.append("\n:解析异常" + e.toString());
                         }
 
                     }
@@ -237,7 +267,7 @@ public class StartService extends Service {
             public void run() {
                 try {
                     mWebSocketClient.reconnectBlocking();
-                    Log.e(TAG, "State_Socket：重新连接中..."+mSocket_url);
+                    Log.e(TAG, "State_Socket：重新连接中..." + mSocket_url);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -250,7 +280,7 @@ public class StartService extends Service {
             try {
                 mWebSocketClient.close();
                 mWebSocketClient = null;
-                Log.e(TAG, "stopConnect: 链接已断开 "+mSocket_url);
+                Log.e(TAG, "stopConnect: 链接已断开 " + mSocket_url);
             } catch (Exception e) {
                 Log.e(TAG, "run: " + e.toString());
             }

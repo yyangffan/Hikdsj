@@ -33,4 +33,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
     implementation "org.java-websocket:Java-WebSocket:1.4.0"
     implementation 'com.ljy.ring:devring:1.2.0'
+    implementation 'com.github.instacart.truetime-android:library-extension-rx:3.5'
+    implementation 'com.github.instacart.truetime-android:library:3.5'
 }
