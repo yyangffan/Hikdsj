@@ -1,6 +1,7 @@
 package com.hikdsj.hikdsj.receiver;
 
 import android.annotation.TargetApi;
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -49,8 +50,8 @@ public class StartService extends Service {
     private StringBuilder str_caozuo = new StringBuilder();
 
     public StartService() {
-      initHik();
-//        refreshTrueTime();
+//        initHik();
+        refreshTrueTime();
     }
 
     @Override
@@ -133,6 +134,7 @@ public class StartService extends Service {
         }
         str_caozuo = new StringBuilder();
     }
+
     /*海康SDK工具类初始化*/
     private void initHik() {
         mInstance = HikuseUtils.getInstance(CarApplication.getInstance());
@@ -149,8 +151,11 @@ public class StartService extends Service {
     }
 
     /*--------------------------------------时间校准--------------------------------------*/
+    private long time_old = 1647227226000l;
     private void refreshTrueTime() {
         if (!TrueTimeRx.isInitialized()) {
+            str_caozuo.append("refreshTrueTime: Sorry TrueTime not yet initialized");
+//            toSaveLog(str_caozuo.toString(),"时间修改记录===");
             Log.e(TAG, "refreshTrueTime: Sorry TrueTime not yet initialized.");
             return;
         }
@@ -158,15 +163,26 @@ public class StartService extends Service {
         Date deviceTime = new Date();
 
         Log.d(TAG, String.format(" [trueTime: %d] [devicetime: %d] [drift_sec: %f]", trueTime.getTime(), deviceTime.getTime(), (trueTime.getTime() - deviceTime.getTime()) / 1000F));
-        Log.e(TAG, "_formatDate: "+ _formatDate(trueTime, "yyyy-MM-dd HH:mm:ss"));
-        Log.e(TAG, "refreshTrueTime: " );
+        Log.e(TAG, "_formatDate: " + _formatDate(trueTime, "yyyy-MM-dd HH:mm:ss"));
+        Log.e(TAG, "refreshTrueTime: ");
 //        SystemClock.setCurrentTimeMillis(trueTime.getTime());
+        str_caozuo.append("已获取时间：getTime  "+trueTime.getTime() );
+        try {
+            AlarmManager am = (AlarmManager) CarApplication.getInstance().getSystemService(Context.ALARM_SERVICE);
+            am.setTimeZone("Asia/Tbilisi");
+            am.setTime(time_old);
+        } catch (Exception e) {
+            Log.e(TAG, "refreshTrueTime: 修改失败"+e.toString() );
+            str_caozuo.append("/n修改失败："+e.toString());
+        }
+//        toSaveLog(str_caozuo.toString(),"时间修改记录===");
     }
 
     private String _formatDate(Date date, String pattern) {
         DateFormat format = new SimpleDateFormat(pattern);
         return format.format(date);
     }
+
     /*--------------------------------------Socket一系列--------------------------------------*/
     private String mContect_ip = "";                        //设备间的唯一标识
     private WebSocketClient mWebSocketClient;
