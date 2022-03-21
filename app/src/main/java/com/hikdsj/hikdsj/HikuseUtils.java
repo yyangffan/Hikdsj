@@ -3,12 +3,14 @@ package com.hikdsj.hikdsj;
 import android.content.Context;
 import android.util.Log;
 
+import com.hikdsj.hikdsj.base.Constant;
 import com.hikvision.hiksdk.HikSdk;
 
+import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class HikuseUtils implements HikSdk.MediaResultCallback{
+public class HikuseUtils implements HikSdk.MediaResultCallback {
     private static final String TAG = "HikuseUtils";
     private static volatile HikuseUtils instance;
     private ExecutorService executorService;
@@ -17,6 +19,11 @@ public class HikuseUtils implements HikSdk.MediaResultCallback{
     public static final String video_path = "/storage/sdcard0/carvideo.mp4";
     private int cameraIndex = 0;
     private OnRecordListener mOnRecordListener;
+    private boolean isRecoding = false;//是否正在录制
+    /*暂时不用   用到再改吧（针对于已开始录制还未结束时又进行了开始的操作）*/
+    private String oldRecodNum = "";//上一录制的流水号
+    private String recodePath  = "";//上一录制的存储位置
+
 
     private HikuseUtils(Context context) {
         executorService = Executors.newCachedThreadPool();
@@ -27,10 +34,10 @@ public class HikuseUtils implements HikSdk.MediaResultCallback{
     }
 
     public static HikuseUtils getInstance(Context context) {
-        if(instance == null){
-            synchronized (HikuseUtils.class){
-                if(instance == null){
-                    instance =new HikuseUtils(context);
+        if (instance == null) {
+            synchronized (HikuseUtils.class) {
+                if (instance == null) {
+                    instance = new HikuseUtils(context);
                 }
             }
         }
@@ -41,48 +48,39 @@ public class HikuseUtils implements HikSdk.MediaResultCallback{
         mOnRecordListener = onRecordListener;
     }
 
-    public  void stspRecod(boolean start){
-        executorService.submit(new RecordRunnable());
-//        mediaClient.startRecord(0,0,video_path);
-    }
-    private class RecordRunnable implements Runnable {
+    public void stspRecod(String recordNum, boolean start) {
+        if (start /*&& !isRecoding*/) {//如果是开始且未在录制中
+            isRecoding = true;
+            mediaClient.HikTTSSpeak(recordNum+"开始录制");
+            String time = String.valueOf(new Date().getTime());
+            recordNum += "_" + time + "_1.mp4";
+            mediaClient.startRecord(0, 0, Constant.VIDEO_FILEP + "start" + recordNum);
+        } else {
+            isRecoding = false;
+            mediaClient.HikTTSSpeak(recordNum + "结束录制");
+            mediaClient.stopRecord(0);
+//            if (start) {
+//                isRecoding = true;
+////                mediaClient.HikTTSSpeak(recordNum + "开始录制");
+//                mediaClient.startRecord(0, 0, "");
+//            }
 
-        @Override
-        public void run() {
-            Log.e(TAG, "RecordRunnable");
-            if (mediaClient != null) {
-                //1录像 其他未录像
-                mediaClient.setFileTags(1,"JQ12344212412",null);
-                int ret = mediaClient.queryRecordStatus(cameraIndex);
-                Log.e(TAG, "ret:" + ret);
-                if (ret == 0) {
-                    if(mOnRecordListener!=null){
-                        mOnRecordListener.onstartRecord();
-                    }
-                    //startRecordAddNotify startRecord区别在于是否有想要有通知栏提示
-                    //stopRecordDelNotify  stopRecord 配合前者一起使用
-//                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, "/storage/sdcard0/hello.mp4");
-                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, video_path);
-//                    mediaClient.startRecord(cameraIndex, HikSdk.STREAM_TYPE_MAIN, "/sdcard/hello.mp4");
-//                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, null);
-                } else {
-                    if(mOnRecordListener!=null){
-                        mOnRecordListener.onstopRecord();
-                    }
-                    mediaClient.stopRecordDelNotify(cameraIndex);
-                }
-            } else {
-                Log.e(TAG, "mediaClient is null");
-            }
         }
     }
-    public interface OnRecordListener{
-        void onstartRecord();
-        void onstopRecord();
+
+    public interface OnRecordListener {
+        void onstartRecord(String path);
+
+        void onstopRecord(String path);
     }
 
     @Override
-    public void onResultCallback(int i, String s) {
-
+    public void onResultCallback(int i, String path) {
+        if(isRecoding){
+//            recodePath = path;
+            mOnRecordListener.onstartRecord(path);
+        }else{
+            mOnRecordListener.onstopRecord(path);
+        }
     }
 }

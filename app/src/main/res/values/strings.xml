@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">HikSdkDemo</string>
+    <string name="app_name">Hik</string>
     <string name="media">多媒体</string>
     <string name="parameter">参数配置</string>
     <string name="tts">语音播报</string>

@@ -5,8 +5,10 @@ import android.app.UiModeManager;
 import android.content.Context;
 import android.net.http.HttpResponseCache;
 import android.os.AsyncTask;
+import android.text.TextUtils;
 import android.util.Log;
 
+import com.hikdsj.hikdsj.utils.CarShareUtil;
 import com.instacart.library.truetime.TrueTime;
 import com.instacart.library.truetime.TrueTimeRx;
 import com.ljy.devring.DevRing;
@@ -31,12 +33,17 @@ public class CarApplication extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
+        DevRing.init(this);
+        String app_url = (String) CarShareUtil.getInstance().get(CarShareUtil.APP_BASEURL, "");
+        if (!TextUtils.isEmpty(app_url)) {
+            Constant.BASE_URL = app_url;
+        }
         init();
-        initRxTrueTime();
+//        initRxTrueTime();
     }
 
     /*网络框架初始化*/
-    private void init() {
+    public void init() {
         try {
             File cacheDir =new  File(getCacheDir(), "https");
             HttpResponseCache.install(cacheDir, 1024 * 1024 * 128);

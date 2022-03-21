@@ -7,8 +7,11 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.hikvision.hiksdk.HikSdk;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -20,7 +23,7 @@ public class MediaActivity extends AppCompatActivity implements SurfaceHolder.Ca
 
     private SurfaceView surfaceView;
     private SurfaceHolder holder;
-    private Button pic, startRecode,endRecode;
+    private Button pic, startRecode, endRecode;
 
     private ExecutorService executorService;
 
@@ -35,8 +38,8 @@ public class MediaActivity extends AppCompatActivity implements SurfaceHolder.Ca
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_media);
-//        initData();
-//        initView();
+        initData();
+        initView();
     }
 
     private void initData() {
@@ -52,8 +55,8 @@ public class MediaActivity extends AppCompatActivity implements SurfaceHolder.Ca
         holder = surfaceView.getHolder();
         holder.addCallback(this);
         pic = findViewById(R.id.pic);
-        startRecode = findViewById(R.id.recode);
-        endRecode = findViewById(R.id.startrecode);
+        startRecode = findViewById(R.id.startrecode);
+        endRecode = findViewById(R.id.stoprecode);
         pic.setOnClickListener(this);
         startRecode.setOnClickListener(this);
         endRecode.setOnClickListener(this);
@@ -88,13 +91,18 @@ public class MediaActivity extends AppCompatActivity implements SurfaceHolder.Ca
             case R.id.pic:
                 executorService.submit(new TakePicRunnable());
                 mediaClient.HikTTSSpeak("test");
-                Log.d(TAG, "########"+mediaClient.queryAudioStatus());
+                Log.d(TAG, "########" + mediaClient.queryAudioStatus());
                 break;
             case R.id.startrecode:
-
-                executorService.submit(new RecordRunnable());
-                mediaClient.startRecord(0,0,"");
+//                executorService.submit(new RecordRunnable());
+                mediaClient.startRecord(0, 0, "");
                 break;
+                case R.id.stoprecode:
+//                executorService.submit(new RecordRunnableStop());
+                mediaClient.stopRecord(0);
+                break;
+
+
         }
     }
 
@@ -184,19 +192,24 @@ public class MediaActivity extends AppCompatActivity implements SurfaceHolder.Ca
             Log.e(TAG, "RecordRunnable");
             if (mediaClient != null) {
                 //1录像 其他未录像
-                mediaClient.setFileTags(1,"JQ12344212412",null);
+                mediaClient.setFileTags(1, "JQ12344212412", null);
                 int ret = mediaClient.queryRecordStatus(cameraIndex);
-                Log.e(TAG, "ret:" + ret);
-                if (ret == 0) {
-                    //startRecordAddNotify startRecord区别在于是否有想要有通知栏提示
-                    //stopRecordDelNotify  stopRecord 配合前者一起使用
-//                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, "/storage/sdcard0/hello.mp4");
-                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, "/storage/sdcard0/carvideo.mp4");
-//                    mediaClient.startRecord(cameraIndex, HikSdk.STREAM_TYPE_MAIN, "/sdcard/hello.mp4");
-//                    mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, null);
-                } else {
-                    mediaClient.stopRecordDelNotify(cameraIndex);
-                }
+                mediaClient.startRecordAddNotify(cameraIndex, HikSdk.STREAM_TYPE_MAIN, "/storage/sdcard0/carvideo.mp4");
+            } else {
+                Log.e(TAG, "mediaClient is null");
+            }
+        }
+    }
+
+    private class RecordRunnableStop implements Runnable {
+
+        @Override
+        public void run() {
+            Log.e(TAG, "RecordRunnable");
+            if (mediaClient != null) {
+                //1录像 其他未录像
+                mediaClient.setFileTags(1, "JQ12344212412", null);
+                mediaClient.stopRecordDelNotify(cameraIndex);
             } else {
                 Log.e(TAG, "mediaClient is null");
             }

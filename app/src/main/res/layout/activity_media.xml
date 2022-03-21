@@ -25,17 +25,18 @@
             android:text="拍照" />
 
         <Button
-            android:id="@+id/recode"
+            android:id="@+id/startrecode"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="录像" />
+            android:text="开始录像" />
+
         <Button
-                android:id="@+id/startrecode"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="录像" />
+            android:id="@+id/stoprecode"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="结束录像" />
     </LinearLayout>
 
 </RelativeLayout>
