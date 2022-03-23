@@ -48,16 +48,24 @@ public class HikuseUtils implements HikSdk.MediaResultCallback {
         mOnRecordListener = onRecordListener;
     }
 
-    public void stspRecod(String recordNum, boolean start) {
+    /**
+     *
+     * @param recordNum 流水号
+     * @param checkNum  查验次数
+     * @param videoType 执法记录仪类型
+     * @param start     true-开始  false-结束
+     *                  流水号_查验次数_执法记录类型_时间戳.mp4
+     */
+    public void stspRecod(String recordNum,String checkNum,String videoType, boolean start) {
         if (start /*&& !isRecoding*/) {//如果是开始且未在录制中
             isRecoding = true;
-            mediaClient.HikTTSSpeak(recordNum+"开始录制");
+            mediaClient.HikTTSSpeak("流水号"+recordNum+"开始录像");
             String time = String.valueOf(new Date().getTime());
-            recordNum += "_" + time + "_1.mp4";
+            recordNum += "_" + checkNum +"_" +videoType +"_" +time+".mp4";
             mediaClient.startRecord(0, 0, Constant.VIDEO_FILEP + "start" + recordNum);
         } else {
             isRecoding = false;
-            mediaClient.HikTTSSpeak(recordNum + "结束录制");
+            mediaClient.HikTTSSpeak("流水号"+recordNum + "结束录像");
             mediaClient.stopRecord(0);
 //            if (start) {
 //                isRecoding = true;

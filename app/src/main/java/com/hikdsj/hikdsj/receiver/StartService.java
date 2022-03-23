@@ -92,7 +92,7 @@ public class StartService extends Service {
     public static final long UPFILE_TIME = 10 * 1000;       //上传文件的时间间隔
     private long upFileTime = 0L;                           //上传文件的时间暂存
     private boolean upFileing = false;                      //是否正在上传
-    Handler mHandler =  new Handler(){
+    Handler mHandler = new Handler() {
         @Override
         public void handleMessage(@NonNull Message msg) {
             super.handleMessage(msg);
@@ -186,7 +186,7 @@ public class StartService extends Service {
         call.enqueue(new Callback<com.alibaba.fastjson.JSONObject>() {
             @Override
             public void onResponse(Call<com.alibaba.fastjson.JSONObject> call, Response<com.alibaba.fastjson.JSONObject> bean) {
-                Log.i(TAG, "onResponse: 连接成功--开始连接Socket"+Constant.BASE_URL);
+                Log.i(TAG, "onResponse: 连接成功--开始连接Socket" + Constant.BASE_URL);
                 initSocket();
             }
 
@@ -217,16 +217,19 @@ public class StartService extends Service {
                     @Override
                     public void onMessage(String message) {
                         Log.e(TAG, "onMessage: " + message);
+                        /*"type"类型 1录像 2停止录像  "checkNum"查验次数  "videoType"执法记录仪类型  "lsh": 流水号*/
                         try {
                             JSONObject jsonObject = new JSONObject(message);
                             String type = jsonObject.getString("type");
-                            String liushuiCode = "1120003";
+                            String liushuiCode = jsonObject.getString("lsh");
                             if (type.equals("1")) {
-                                mInstance.stspRecod(liushuiCode, true);
+                                String checkNum = jsonObject.getString("checkNum");
+                                String videoType = jsonObject.getString("videoType");
+                                mInstance.stspRecod(liushuiCode,checkNum,videoType, true);
                             } else if (type.equals("2")) {
-                                mInstance.stspRecod(liushuiCode, false);
+                                mInstance.stspRecod(liushuiCode, "", "", false);
                             } else if (type.equals("3")) {
-                                UpFileUtils.getInstance().toCheckFile();
+//                                UpFileUtils.getInstance().toCheckFile();
                             }
                         } catch (JSONException e) {
                         }
@@ -331,7 +334,7 @@ public class StartService extends Service {
             } catch (Exception e) {
                 Log.e(TAG, "run: " + e.toString());
             }
-        }else {
+        } else {
             toConnectSocket();
         }
     }
@@ -384,7 +387,7 @@ public class StartService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if(!EventBus.getDefault().isRegistered(this)) {
+        if (!EventBus.getDefault().isRegistered(this)) {
             EventBus.getDefault().register(this);
         }
         startForground();
