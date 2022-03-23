@@ -13,9 +13,11 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
@@ -28,6 +30,7 @@ import com.hikdsj.hikdsj.MediaActivity;
 import com.hikdsj.hikdsj.R;
 import com.hikdsj.hikdsj.base.CarApplication;
 import com.hikdsj.hikdsj.base.Constant;
+import com.hikdsj.hikdsj.bean.EventMessage;
 import com.hikdsj.hikdsj.bean.VideoBean;
 import com.hikdsj.hikdsj.utils.UpFileUtils;
 import com.instacart.library.truetime.TrueTime;
@@ -38,6 +41,8 @@ import com.ljy.devring.http.support.throwable.HttpThrowable;
 import com.ljy.devring.util.FileUtil;
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONException;
@@ -62,16 +67,24 @@ import java.util.Locale;
 import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
+import androidx.annotation.NonNull;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class StartService extends Service {
     private static final String TAG = Constant.TAG;
     private UpFileUtils mUpFileUtils;
     private HikuseUtils mInstance;
-    private String device_ip = "";                          //设备间的唯一标识
+    private String device_ip = "10";                          //设备间的唯一标识
     private WebSocketClient mWebSocketClient;
     private static final long HEART_BEAT_RATE = 30 * 1000;  //心跳间隔
     private long sendTime = 0L;                             //心跳时间暂存
@@ -79,6 +92,13 @@ public class StartService extends Service {
     public static final long UPFILE_TIME = 10 * 1000;       //上传文件的时间间隔
     private long upFileTime = 0L;                           //上传文件的时间暂存
     private boolean upFileing = false;                      //是否正在上传
+    Handler mHandler =  new Handler(){
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            super.handleMessage(msg);
+            Toast.makeText(StartService.this, "连接失败,配置后重新连接", Toast.LENGTH_SHORT).show();
+        }
+    };
 
     public StartService() {
         init();
@@ -153,8 +173,34 @@ public class StartService extends Service {
     }
 
     /*--------------------------------------Socket一系列--------------------------------------*/
+    /*测试链接-3秒等待时间*/
+    public void goTest() {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+        OkHttpClient client = builder.readTimeout(3, TimeUnit.SECONDS).connectTimeout(3, TimeUnit.SECONDS).build();
+        Retrofit retrofit = new Retrofit.Builder().addConverterFactory(GsonConverterFactory.create())
+                .baseUrl(Constant.BASE_URL)
+                .client(client)
+                .build();
+        ApiService service = retrofit.create(ApiService.class);
+        Call<com.alibaba.fastjson.JSONObject> call = service.connectionTest();
+        call.enqueue(new Callback<com.alibaba.fastjson.JSONObject>() {
+            @Override
+            public void onResponse(Call<com.alibaba.fastjson.JSONObject> call, Response<com.alibaba.fastjson.JSONObject> bean) {
+                Log.i(TAG, "onResponse: 连接成功--开始连接Socket"+Constant.BASE_URL);
+                initSocket();
+            }
+
+            @Override
+            public void onFailure(Call<com.alibaba.fastjson.JSONObject> call, Throwable t) {
+                Log.i(TAG, "onResponse: 连接失败--无法连接Socket");
+                mHandler.sendEmptyMessage(1);
+                mHandler_socket.removeCallbacks(heartBeatRunnable);
+            }
+        });
+    }
+
     private void toConnectSocket() {
-        initSocket();
+        goTest();
     }
 
     public void initSocket() {
@@ -280,12 +326,14 @@ public class StartService extends Service {
             try {
                 mWebSocketClient.close();
                 mWebSocketClient = null;
+                toConnectSocket();
                 Log.e(TAG, "stopConnect: 链接已断开 " + mSocket_url);
             } catch (Exception e) {
                 Log.e(TAG, "run: " + e.toString());
             }
+        }else {
+            toConnectSocket();
         }
-        mHandler_socket.removeCallbacks(heartBeatRunnable);
     }
 
     private String guessMimeType(String path) {
@@ -336,6 +384,9 @@ public class StartService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if(!EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().register(this);
+        }
         startForground();
         return super.onStartCommand(intent, flags, startId);
     }
@@ -358,4 +409,19 @@ public class StartService extends Service {
 //            start(this);
         }
     }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        EventBus.getDefault().unregister(this);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void getEventMsgt(EventMessage msg) {
+        if (msg.getMessage().equals("diss")) {
+            stopConnect();
+        }
+    }
+
+
 }

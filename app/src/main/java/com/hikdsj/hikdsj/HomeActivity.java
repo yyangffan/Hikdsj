@@ -21,10 +21,13 @@ import android.widget.Toast;
 import com.alibaba.fastjson.JSONObject;
 import com.hikdsj.hikdsj.base.CarApplication;
 import com.hikdsj.hikdsj.base.Constant;
+import com.hikdsj.hikdsj.bean.EventMessage;
 import com.hikdsj.hikdsj.receiver.StartService;
 import com.hikdsj.hikdsj.utils.CarShareUtil;
 import com.hikdsj.hikdsj.utils.UpFileUtils;
 import com.tbruyelle.rxpermissions2.RxPermissions;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.util.concurrent.TimeUnit;
 
@@ -32,6 +35,7 @@ public class HomeActivity extends AppCompatActivity {
     EditText mConfigSetIp;
     EditText mConfigSetKou;
     EditText mConfigSetName;
+    private boolean can_save = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +46,7 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void initViews() {
+        findViewById(R.id.textView6).requestFocus();
         mConfigSetIp = findViewById(R.id.config_set_ip);
         mConfigSetKou = findViewById(R.id.config_set_kou);
         mConfigSetName = findViewById(R.id.config_set_name);
@@ -62,6 +67,7 @@ public class HomeActivity extends AppCompatActivity {
             public void onResponse(Call<JSONObject> call, Response<JSONObject> bean) {
                 //请求成功操作
                 Toast.makeText(HomeActivity.this, "连接成功", Toast.LENGTH_SHORT).show();
+                can_save = true;
             }
 
             @Override
@@ -73,9 +79,14 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     public  void toSetUrl(View view) {
-        toSetBaseUrl();
-        CarShareUtil.getInstance().put(CarShareUtil.APP_BASEURL, Constant.BASE_URL);
-        Toast.makeText(this, "保存成功", Toast.LENGTH_SHORT).show();
+        if(can_save) {
+            toSetBaseUrl();
+            CarShareUtil.getInstance().put(CarShareUtil.APP_BASEURL, Constant.BASE_URL);
+            EventBus.getDefault().post(new EventMessage("diss"));
+            Toast.makeText(this, "保存成功", Toast.LENGTH_SHORT).show();
+        }else{
+            Toast.makeText(this, "请先测试连接，通过后才可保存", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /*初始化网络框架*/
