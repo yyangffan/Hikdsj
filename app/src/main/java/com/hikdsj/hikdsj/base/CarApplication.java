@@ -71,7 +71,7 @@ public class CarApplication extends Application {
                 .withRetryCount(100)
                 .withSharedPreferencesCache(this)
                 .withLoggingEnabled(true)
-                .initializeRx("http://47.104.224.247:8111/")
+                .initializeRx("time.ustc.edu.cn")
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(new DisposableSingleObserver<Date>() {
