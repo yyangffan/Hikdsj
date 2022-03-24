@@ -22,6 +22,9 @@ public class CarShareUtil {
     public static final String APP_USERNAME = "APPUSERNAME";//userName
     public static final String CB_NAME ="CB_NAME";          //登录保存用户名
     public static final String CB_PWD = "CB_PWD";           //登录保存密码
+    public static final String FWQ_IP = "FWQ_IP";                 //服务器ip地址
+    public static final String FWQ_DKH = "FWQ_DKH";                //服务器端口号
+    public static final String FWQ_INT = "FWQ_INT";                //服务器inter
 
     private CarShareUtil() {
     }

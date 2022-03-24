@@ -14,6 +14,8 @@ import com.ljy.devring.http.support.throwable.HttpThrowable;
 import com.ljy.devring.util.FileUtil;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.FileNameMap;
 import java.net.URLConnection;
@@ -55,8 +57,9 @@ public class UpFileUtils {
     }
 
     public void toCheckFile() {
-        if (!TextUtils.isEmpty(haveFile())) {
-            goUpVideo(haveFile());
+        String file_path = haveFile();
+        if (!TextUtils.isEmpty(file_path)) {
+            goUpVideo(file_path);
             if (mOnUpFileListener != null) {
                 mOnUpFileListener.onStartUpListener();
             }
@@ -122,16 +125,42 @@ public class UpFileUtils {
     /*是否有文件*/
     private String haveFile() {
         File file = FileUtil.getFile(Constant.VIDEO_FILEP);
-        File[] files = file.listFiles();
-        int length = files.length;
-        if (length != 0) {
-            String path = files[length - 1].getPath();
-            if(path.contains("start")){
-                return "";
+        if (file != null) {
+            File[] files = file.listFiles();
+            int length = files.length;
+            if (length != 0) {
+                String path = files[length - 1].getPath();
+                if (path.contains("start")) {
+                    return "";
+                } else if (path.contains("Police")) {
+                    fileMove(files[length - 1]);
+                    return "";
+                }
+                return files[length - 1].getPath();
             }
-            return files[length-1].getPath();
         }
         return "";
+    }
+
+    /*转移可能存在问题的视频*/
+    private void fileMove(File file) {
+        try {
+            File out_file = FileUtil.getFile("/storage/sdcard0/filecard/");
+            FileInputStream fis = new FileInputStream(file);
+            FileOutputStream fos = new FileOutputStream(out_file + file.getName());
+            int n = 0;
+            byte[] b = new byte[1024];
+            while ((n = fis.read(b)) != -1) {
+                fos.write(b);
+                fos.write(b, 0, n);
+            }
+            fis.close();
+            fos.close();
+            Log.i(TAG, "转移成功");
+            FileUtil.deleteFile(file, true);
+        } catch (Exception e) {
+            Log.e(TAG, "fileMove: " + e.toString());
+        }
     }
 
     public interface OnUpFileListener {

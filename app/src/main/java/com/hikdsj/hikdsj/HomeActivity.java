@@ -50,10 +50,17 @@ public class HomeActivity extends AppCompatActivity {
         mConfigSetIp = findViewById(R.id.config_set_ip);
         mConfigSetKou = findViewById(R.id.config_set_kou);
         mConfigSetName = findViewById(R.id.config_set_name);
+        String fwq_ip = (String)CarShareUtil.getInstance().get(CarShareUtil.FWQ_IP, "172.16.98.96");
+        String fwq_dkh = (String)CarShareUtil.getInstance().get(CarShareUtil.FWQ_DKH, "8912");
+        String fwq_inter = (String)CarShareUtil.getInstance().get(CarShareUtil.FWQ_INT, "interface");
+        mConfigSetIp.setText(fwq_ip);
+        mConfigSetKou.setText(fwq_dkh);
+        mConfigSetName.setText(fwq_inter);
+
     }
 
     /*测试链接-3秒等待时间*/
-    public  void goTest(View v) {
+    public void goTest(View v) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         OkHttpClient client = builder.readTimeout(3, TimeUnit.SECONDS).connectTimeout(3, TimeUnit.SECONDS).build();
         Retrofit retrofit = new Retrofit.Builder().addConverterFactory(GsonConverterFactory.create())
@@ -78,13 +85,13 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    public  void toSetUrl(View view) {
-        if(can_save) {
+    public void toSetUrl(View view) {
+        if (can_save) {
             toSetBaseUrl();
             CarShareUtil.getInstance().put(CarShareUtil.APP_BASEURL, Constant.BASE_URL);
             EventBus.getDefault().post(new EventMessage("diss"));
             Toast.makeText(this, "保存成功", Toast.LENGTH_SHORT).show();
-        }else{
+        } else {
             Toast.makeText(this, "请先测试连接，通过后才可保存", Toast.LENGTH_SHORT).show();
         }
     }
@@ -93,7 +100,9 @@ public class HomeActivity extends AppCompatActivity {
     private void toSetBaseUrl() {
         Constant.BASE_URL = getUrl();
         CarApplication.getInstance().init();
-
+        CarShareUtil.getInstance().put(CarShareUtil.FWQ_IP, mConfigSetIp.getText().toString());
+        CarShareUtil.getInstance().put(CarShareUtil.FWQ_DKH, mConfigSetKou.getText().toString());
+        CarShareUtil.getInstance().put(CarShareUtil.FWQ_INT, mConfigSetName.getText().toString());
     }
 
     /*拼接出的服务器地址*/
